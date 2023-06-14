@@ -4,6 +4,16 @@ display(dbutils.fs.ls("dbfs:/databricks-datasets/airlines/"))
 
 # COMMAND ----------
 
+# MAGIC %md 
+# MAGIC # Run below code ahead of time to prepare the data
+# MAGIC
+
+# COMMAND ----------
+
+dbutils.widgets.text("Catalog")
+
+# COMMAND ----------
+
 # create the database
 current_user = dbutils.notebook.entry_point.getDbutils().notebook().getContext().tags().apply('user')
 query = "CREATE DATABASE IF not exists flights_perf LOCATION 'dbfs:/Users/{user}/flights_perf_db'".format(user = current_user)
@@ -11,9 +21,13 @@ spark.sql(query)
 
 # COMMAND ----------
 
+spark.sql("select current_catalog()").show()
+
+# COMMAND ----------
+
 # MAGIC %sql
 # MAGIC -- create a table over CSV files 
-# MAGIC create table flights_perf.FLIGHTS_RAW (
+# MAGIC create table if not exists flights_perf.FLIGHTS_RAW (
 # MAGIC       Year integer,
 # MAGIC       Month integer,
 # MAGIC       DayofMonth integer, 
@@ -67,6 +81,7 @@ display(df)
 # COMMAND ----------
 
 df.count()
+#should be : 1 235 349 701
 
 # COMMAND ----------
 
@@ -76,10 +91,10 @@ df.write \
   .format("delta") \
   .mode("overwrite") \
   .option("overwriteSchema", "true") \
-  .option("maxRecordsPerFile", 200000) \
+  .option("maxRecordsPerFile", 150000) \
   .saveAsTable("flights_perf.FLIGHT_partitioned")
 
-# .option("maxRecordsPerFile", 200000) \ # to simulate a small file prb
+# .option("maxRecordsPerFile", 150000) \ # to simulate a small file prb
 
 # COMMAND ----------
 
@@ -116,6 +131,10 @@ df.write.format("delta") \
 
 # COMMAND ----------
 
+
+
+# COMMAND ----------
+
 # MAGIC %sql
 # MAGIC --select count(1) 
 # MAGIC --FROM MATTHIEU_DB.FLIGHTS_RAW
@@ -125,15 +144,21 @@ df.write.format("delta") \
 
 # COMMAND ----------
 
+# MAGIC %md 
+# MAGIC # Execute the below query in Databricks SQL
+# MAGIC
+
+# COMMAND ----------
+
 # MAGIC %sql 
 # MAGIC -- to be executed in DB SQL
-# MAGIC 
+# MAGIC
 # MAGIC SET use_cached_result = false ; 
-# MAGIC 
+# MAGIC
 # MAGIC -- Airlines with the most cancelled flight 
 # MAGIC --     orginating from ORD (Chicago)
 # MAGIC --     for the month of March 
-# MAGIC 
+# MAGIC
 # MAGIC with cancelled_origin as (
 # MAGIC   select year, `Month`, UniqueCarrier,
 # MAGIC     sum(cancelled) as nb_cancelled,
